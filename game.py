@@ -79,7 +79,6 @@ def main(bots):
                 x, y = bot_set[player].move(board, nth_move)
                 able_to_place, msg = referee.can_place(x, y)
                 if not able_to_place:
-                    print('{}. Try again in another place.'.format(msg))
                     continue
                 break
 

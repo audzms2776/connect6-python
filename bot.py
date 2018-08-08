@@ -22,6 +22,6 @@ class RandomBot(Bot):
     def move(self, board, nth_move):
         x = random.randrange(0, 19)
         y = random.randrange(0, 19)
-        input()
+        
         return x, y
 
