@@ -4,14 +4,13 @@ import numpy as np
 import tensorflow as tf
 from logger import MoveLogger
 from rules import Referee
-from bot import RandomBot, Player
+from bot import RandomBot, Player, TFBot
 
 # constants
 STONE_CHAR = ['.', 'O', 'X']
 STONE_NAME = ['', 'White (O)', 'Black (X)']
 CHAR_TO_X = {chr(ord('A') + i) : i for i in range(19)}
 X_TO_CHAR = {i: chr(ord('A')+i) for i in range(19)}
-learning_rate = 0.01
 
 
 def discount_rewards(r, gamma=0.99):
@@ -76,7 +75,7 @@ def main(bots):
     logger = MoveLogger()
 
     while True:
-        draw_board(board, player, nth_move)
+        # draw_board(board, player, nth_move)
         # input loop.
         while True:
             try:
@@ -101,7 +100,10 @@ def main(bots):
         action = [[0 for x in range(19)] for y in range(19)]
         action[x][y] = 1
         action = np.array(action).reshape(-1)
-        print(action, x, y)
+        # print(action, x, y)
+
+        if bot_set[player].player == 2:
+            pass
 
         # place stone
         board[y][x] = player
@@ -130,10 +132,8 @@ def main(bots):
 if __name__ == '__main__':
     print('Choose player slot. (1=Player 2=AI)')
 
-    black_choice = input(' Black (1 or 2) : ')
-    white_choice = input(' White (1 or 2) : ')
+    whitebot = RandomBot(1)
+    blackbot = TFBot(2)
 
-    whitebot = Player(1) if white_choice == '1' else RandomBot(1)
-    blackbot = Player(2) if black_choice == '1' else RandomBot(2)
-
-    main([whitebot, blackbot])
+    for episode in range(2):
+        main([whitebot, blackbot])
