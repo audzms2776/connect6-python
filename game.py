@@ -9,43 +9,36 @@ from bot import RandomBot, Player, TFBot
 # constants
 STONE_CHAR = ['.', 'O', 'X']
 STONE_NAME = ['', 'White (O)', 'Black (X)']
-CHAR_TO_X = {chr(ord('A') + i) : i for i in range(19)}
-X_TO_CHAR = {i: chr(ord('A')+i) for i in range(19)}
-
-
-def discount_rewards(r, gamma=0.99):
-    """ take 1D float array of rewards and compute discounted reward """
-    discounted_r = np.zeros_like(r, dtype=np.float32)
-    running_add = 0
-    for t in reversed(range(len(r))):
-        running_add = running_add * gamma + r[t]
-        discounted_r[t] = running_add
-
-    return discounted_r
+CHAR_TO_X = {chr(ord('A') + i): i for i in range(19)}
+X_TO_CHAR = {i: chr(ord('A') + i) for i in range(19)}
+win_list = []
 
 
 # console helper methods
 def cls():
     os.system('cls' if os.name == 'nt' else 'clear')
 
+
 def darktext(str):
     return str if os.name == 'nt' else '\x1b[0;30m{}\x1b[0m'.format(str)
 
 
 def draw_board(board, player=0, nth_move=0):
-    #cls()
+    # cls()
     print('Move : {}'.format(nth_move))
     print('{} turn.'.format(STONE_NAME[player]))
     print()
     print('       A B C D E F G H I J K L M N O P Q R S ')
     print('     +---------------------------------------+')
-    
+
     for y in range(19):
-        print('  {:>2d} |'.format(y+1), end='')  # line no.
+        print('  {:>2d} |'.format(y + 1), end='')  # line no.
         for x in range(19):
             stone = board[y][x]
-            if stone != 0: print(' ' + STONE_CHAR[board[y][x]], end='')
-            else: print(darktext(' '+X_TO_CHAR[x].lower()), end='')
+            if stone != 0:
+                print(' ' + STONE_CHAR[board[y][x]], end='')
+            else:
+                print(darktext(' ' + X_TO_CHAR[x].lower()), end='')
         print(' |')
 
     print('     +---------------------------------------+')
@@ -62,7 +55,8 @@ def exit_game(logger: MoveLogger, won_bot=None):
     logger.save_to_file()
 
 
-def main(bots):
+def main(episode, bots):
+    bots[1].reset_data()
     # to align index with player variable.
     bot_set = [None] + bots
 
@@ -82,7 +76,7 @@ def main(bots):
                 x, y = bot_set[player].move(board, nth_move)
                 able_to_place, msg = referee.can_place(x, y)
                 if not able_to_place:
-                    # print('{}. Try again in another place.'.format(msg))
+                    # print('{} shit'.format(player))
                     continue
                 break
 
@@ -93,32 +87,32 @@ def main(bots):
 
             except Exception as e:
                 raise e
-                print('Wrong input.')
                 continue
 
-        state = board
-        action = [[0 for x in range(19)] for y in range(19)]
-        action[x][y] = 1
-        action = np.array(action).reshape(-1)
-        # print(action, x, y)
-
-        if bot_set[player].player == 2:
-            pass
-
         # place stone
-        board[y][x] = player
-        logger.log(x, y, player)
+        board[x][y] = player
+        # logger.log(x, y, player)
         referee.update(x, y, player)
 
         won_player = referee.determine()
 
-        if won_player == None:
-            reward = 0
+        if won_player == 1:
+            bot_set[2].rewards[-1][0] = -1.0
+        elif won_player == 2:
+            reward = 1.0
         else:
-            reward = 1
-        
+            reward = 0
+
+        if bot_set[player].player == 2:
+            bot_set[player].reward_sum += reward
+            bot_set[player].rewards = np.vstack([bot_set[player].rewards, reward])
+
         if won_player is not None:
+            win_list.append(won_player)
+            episode_loss = bot_set[2].train()
             exit_game(logger, bot_set[won_player])
+
+            # print("[Episode {}] Won player: {} Loss: {}".format(episode, won_player, episode_loss))
             return
 
         player_moved_count += 1
@@ -126,7 +120,7 @@ def main(bots):
             # Change turn : a player can move 2 times per turn.
             nth_move += 1
             player_moved_count = 0
-            player = 2 if player == 1 else 1
+            player = 1 if player == 2 else 2
 
 
 if __name__ == '__main__':
@@ -135,5 +129,12 @@ if __name__ == '__main__':
     whitebot = RandomBot(1)
     blackbot = TFBot(2)
 
-    for episode in range(2):
-        main([whitebot, blackbot])
+    for episode in range(1000):
+        main(episode, [whitebot, blackbot])
+
+        if episode % 100 == 0:
+            print('random win count: {}'.format(win_list[-100:].count(1)))
+            print('tf     win count: {}'.format(win_list[-100:].count(2)))        
+    
+    print('random win count: {}'.format(win_list.count(1)))
+    print('tf     win count: {}'.format(win_list.count(2)))
